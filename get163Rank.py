@@ -1,10 +1,10 @@
 #coding = utf-8
 import urllib2
 import urllib
-import thread
-import re
 import HTMLParser
 import json
+from models import SongList
+import datetime 
 
 class Get163Rank:
 
@@ -34,14 +34,32 @@ class Get163Rank:
         jsonx = json.loads(json1)
         songList = {}
         for x in  jsonx["weekData"] :
-            songList[x["song"]["name"]] = x["score"]
-        songList = sorted(songList.items(),lambda x,y:cmp(x[1],y[1]),reverse=True)
+            songList[x["song"]["id"]] = {"name":x["song"]["name"],"score":x["score"]}
+            #songList[x["song"]["id"]]["name"]   = x["song"]["name"]
+        songList = sorted(songList.items(),key =lambda x:x[1]["score"],reverse=True)
         songJson = json.dumps(songList,encoding="UTF-8",ensure_ascii=False)
         self.songJson = songJson
+        #print songJson
         return songJson
-    
+    def SaveWeek(self):
+        jsonx =json.loads(self.songJson)
+        #jsonx = json.dumps(jsonx,encoding="UTF-8",ensure_ascii=False)
+        ISOFORMAT='%Y%m%d'
+        today = datetime.date.today().strftime(ISOFORMAT)
+        queryList=[]
+        for x in jsonx :
+            song_Name = json.dumps(x[1]["name"],encoding="UTF-8",ensure_ascii=False)[1:-1]
+            song_ID = x[0]
+            SongList.objects.filter(user_ID=self.id,date=today,song_ID=song_ID).delete()
+            SongModel = SongList(song_ID = song_ID,song_Name = song_Name ,score = x[1]["score"],user_ID = self.id,date=today)
+            queryList.append(SongModel)
+            #state = SongModel.save()
+            print x[0]
+        SongList.objects.bulk_create(queryList)
+        return '200'
     def __init__(self,id):
         self.id = id   
         self.songJson = {}
+
 
 
